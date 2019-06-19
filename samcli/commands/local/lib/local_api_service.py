@@ -5,7 +5,7 @@ Connects the CLI with Local API Gateway service.
 import os
 import logging
 
-from samcli.local.apigw.local_apigw_service import LocalApigwService, Route
+from samcli.local.apigw.local_apigw_service import LocalApigwService, Route, RouteAttributes
 from samcli.commands.local.lib.sam_api_provider import SamApiProvider
 from samcli.commands.local.lib.exceptions import NoApisDefined
 
@@ -54,7 +54,7 @@ class LocalApiService(object):
         """
 
         routing_list = self._make_routing_list(self.api_provider)
-
+        routing_attributes = self._make_routing_attributes(self.api_provider.api_attributes)
         if not routing_list:
             raise NoApisDefined("No APIs available in SAM template")
 
@@ -69,7 +69,8 @@ class LocalApiService(object):
                                     static_dir=static_dir_path,
                                     port=self.port,
                                     host=self.host,
-                                    stderr=self.stderr_stream)
+                                    stderr=self.stderr_stream,
+                                    route_attributes=routing_attributes)
 
         service.create()
 
@@ -99,11 +100,14 @@ class LocalApiService(object):
 
         routes = []
         for api in api_provider.get_all():
-            route = Route(methods=[api.method], function_name=api.function_name, path=api.path,
-                          binary_types=api.binary_media_types)
+            route = Route(methods=[api.method], function_name=api.function_name, path=api.path)
             routes.append(route)
 
         return routes
+
+    @staticmethod
+    def _make_routing_attributes(api_attributes):
+        return RouteAttributes(binary_media_types=api_attributes.binary_media_types, cors=api_attributes.cors)
 
     @staticmethod
     def _print_routes(api_provider, host, port):
@@ -139,11 +143,11 @@ class LocalApiService(object):
         for _, config in grouped_api_configs.items():
             methods_str = "[{}]".format(', '.join(config["methods"]))
             output = "Mounting {} at http://{}:{}{} {}".format(
-                         config["function_name"],
-                         host,
-                         port,
-                         config["path"],
-                         methods_str)
+                config["function_name"],
+                host,
+                port,
+                config["path"],
+                methods_str)
             print_lines.append(output)
 
             LOG.info(output)

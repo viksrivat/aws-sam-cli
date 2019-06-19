@@ -6,7 +6,7 @@ from collections import namedtuple
 from six import string_types
 
 from samcli.commands.local.lib.swagger.parser import SwaggerParser
-from samcli.commands.local.lib.provider import ApiProvider, Api
+from samcli.commands.local.lib.provider import ApiProvider, Api, ApiAttributes
 from samcli.commands.local.lib.sam_base_provider import SamBaseProvider
 from samcli.commands.local.lib.swagger.reader import SamSwaggerReader
 from samcli.commands.validate.lib.exceptions import InvalidSamDocumentException
@@ -15,7 +15,6 @@ LOG = logging.getLogger(__name__)
 
 
 class SamApiProvider(ApiProvider):
-
     _IMPLICIT_API_RESOURCE_ID = "ServerlessRestApi"
     _SERVERLESS_FUNCTION = "AWS::Serverless::Function"
     _SERVERLESS_API = "AWS::Serverless::Api"
@@ -59,6 +58,7 @@ class SamApiProvider(ApiProvider):
 
         # Store a set of apis
         self.cwd = cwd
+        self.api_attributes = ApiAttributes(binary_media_types=set(), cors=None)
         self.apis = self._extract_apis(self.resources)
 
         LOG.debug("%d APIs found in the template", len(self.apis))
@@ -143,8 +143,11 @@ class SamApiProvider(ApiProvider):
         LOG.debug("Found '%s' APIs in resource '%s'", len(apis), logical_id)
 
         collector.add_apis(logical_id, apis)
-        collector.add_binary_media_types(logical_id, parser.get_binary_media_types())  # Binary media from swagger
-        collector.add_binary_media_types(logical_id, binary_media)  # Binary media specified on resource in template
+
+        self.api_attributes.binary_media_types.extend([collector._normalize_binary_media_type(item) for item in
+                                                       parser.get_binary_media_types()])  # Binary media from swagger
+        self.api_attributes.binary_media_types.extend([collector._normalize_binary_media_type(item) for item in
+                                                       binary_media])  # Binary media specified on resource in template
 
     @staticmethod
     def _merge_apis(collector):
@@ -324,7 +327,7 @@ class ApiCollector(object):
     # This is intentional because it allows us to easily extend this class to support future properties on the API.
     # We will store properties of Implicit APIs also in this format which converges the handling of implicit & explicit
     # APIs.
-    Properties = namedtuple("Properties", ["apis", "binary_media_types", "cors"])
+    Properties = namedtuple("Properties", ["apis"])
 
     def __init__(self):
         # API properties stored per resource. Key is the LogicalId of the AWS::Serverless::Api resource and
@@ -361,31 +364,6 @@ class ApiCollector(object):
         """
         properties = self._get_properties(logical_id)
         properties.apis.extend(apis)
-
-    def add_binary_media_types(self, logical_id, binary_media_types):
-        """
-        Stores the binary media type configuration for the API with given logical ID
-
-        Parameters
-        ----------
-        logical_id : str
-            LogicalId of the AWS::Serverless::Api resource
-
-        binary_media_types : list of str
-            List of binary media types supported by this resource
-
-        """
-        properties = self._get_properties(logical_id)
-
-        binary_media_types = binary_media_types or []
-        for value in binary_media_types:
-            normalized_value = self._normalize_binary_media_type(value)
-
-            # If the value is not supported, then just skip it.
-            if normalized_value:
-                properties.binary_media_types.add(normalized_value)
-            else:
-                LOG.debug("Unsupported data type of binary media type value of resource '%s'", logical_id)
 
     def _get_apis_with_config(self, logical_id):
         """

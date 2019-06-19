@@ -210,6 +210,18 @@ _ApiTuple = namedtuple("Api", [
     # String. Name of the Function this API connects to
     "function_name",
 
+])
+_ApiTuple.__new__.__defaults__ = ()
+
+
+class Api(_ApiTuple):
+    def __hash__(self):
+        # Other properties are not a part of the hash
+        return hash(self.path) * hash(self.method) * hash(self.function_name)
+
+
+_ApiAttributesTuple = namedtuple("ApiAttributes", [
+
     # Optional Dictionary containing CORS configuration on this path+method
     # If this configuration is set, then API server will automatically respond to OPTIONS HTTP method on this path and
     # respond with appropriate CORS headers based on configuration.
@@ -218,12 +230,12 @@ _ApiTuple = namedtuple("Api", [
     # List(Str). List of the binary media types the API
     "binary_media_types"
 ])
-_ApiTuple.__new__.__defaults__ = (None,  # Cors is optional and defaults to None
-                                  []     # binary_media_types is optional and defaults to empty
-                                  )
+_ApiAttributesTuple.__new__.__defaults__ = (None,  # Cors is optional and defaults to None
+                                            []  # binary_media_types is optional and defaults to empty
+                                            )
 
 
-class Api(_ApiTuple):
+class ApiAttributes(_ApiTuple):
     def __hash__(self):
         # Other properties are not a part of the hash
         return hash(self.path) * hash(self.method) * hash(self.function_name)

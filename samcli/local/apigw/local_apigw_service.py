@@ -19,7 +19,7 @@ LOG = logging.getLogger(__name__)
 
 class Route(object):
 
-    def __init__(self, methods, function_name, path, binary_types=None):
+    def __init__(self, methods, function_name, path):
         """
         Creates an ApiGatewayRoute
 
@@ -30,15 +30,25 @@ class Route(object):
         self.methods = methods
         self.function_name = function_name
         self.path = path
-        self.binary_types = binary_types or []
 
+class RouteAttributes(object):
+    def __init__(self, binary_media_types, cors):
+        """
+        Creates an ApiGatewayRoute
+
+        :param list(str) methods: List of HTTP Methods
+        :param function_name: Name of the Lambda function this API is connected to
+        :param str path: Path off the base url
+        """
+        self.binary_types = binary_media_types
+        self.cors = cors
 
 class LocalApigwService(BaseLocalService):
 
     _DEFAULT_PORT = 3000
     _DEFAULT_HOST = '127.0.0.1'
 
-    def __init__(self, routing_list, lambda_runner, static_dir=None, port=None, host=None, stderr=None):
+    def __init__(self, routing_list, lambda_runner, static_dir=None, port=None, host=None, stderr=None, route_attributes=None):
         """
         Creates an ApiGatewayService
 
@@ -61,6 +71,7 @@ class LocalApigwService(BaseLocalService):
         """
         super(LocalApigwService, self).__init__(lambda_runner.is_debugging(), port=port, host=host)
         self.routing_list = routing_list
+        self.route_attributes = route_attributes
         self.lambda_runner = lambda_runner
         self.static_dir = static_dir
         self._dict_of_routes = {}
@@ -143,7 +154,7 @@ class LocalApigwService(BaseLocalService):
         route = self._get_current_route(request)
 
         try:
-            event = self._construct_event(request, self.port, route.binary_types)
+            event = self._construct_event(request, self.port, self.route_attributes.binary_types)
         except UnicodeDecodeError:
             return ServiceErrorResponses.lambda_failure_response()
 
