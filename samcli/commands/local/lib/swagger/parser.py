@@ -9,7 +9,6 @@ LOG = logging.getLogger(__name__)
 
 
 class SwaggerParser(object):
-
     _INTEGRATION_KEY = "x-amazon-apigateway-integration"
     _ANY_METHOD_EXTENSION_KEY = "x-amazon-apigateway-any-method"
     _BINARY_MEDIA_TYPES_EXTENSION_KEY = "x-amazon-apigateway-binary-media-types"  # pylint: disable=C0103
@@ -70,8 +69,6 @@ class SwaggerParser(object):
         result = []
         paths_dict = self.swagger.get("paths", {})
 
-        binary_media_types = self.get_binary_media_types()
-
         for full_path, path_config in paths_dict.items():
             for method, method_config in path_config.items():
 
@@ -85,8 +82,7 @@ class SwaggerParser(object):
                     # Convert to a more commonly used method notation
                     method = self._ANY_METHOD
 
-                api = Api(path=full_path, method=method, function_name=function_name, cors=None,
-                          binary_media_types=binary_media_types)
+                api = Api(path=full_path, method=method, function_name=function_name)
                 result.append(api)
 
         return result

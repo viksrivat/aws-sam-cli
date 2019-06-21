@@ -6,7 +6,7 @@ import base64
 from parameterized import parameterized, param
 from werkzeug.datastructures import Headers
 
-from samcli.local.apigw.local_apigw_service import LocalApigwService, Route
+from samcli.local.apigw.local_apigw_service import LocalApigwService, Route, RouteAttributes
 from samcli.local.lambdafn.exceptions import FunctionNotFound
 
 
@@ -16,7 +16,7 @@ class TestApiGatewayService(TestCase):
         self.function_name = Mock()
         self.api_gateway_route = Route(['GET'], self.function_name, '/')
         self.list_of_routes = [self.api_gateway_route]
-
+        self.route_attributes = RouteAttributes()
         self.lambda_runner = Mock()
         self.lambda_runner.is_debugging.return_value = False
 
@@ -25,7 +25,8 @@ class TestApiGatewayService(TestCase):
                                          self.lambda_runner,
                                          port=3000,
                                          host='127.0.0.1',
-                                         stderr=self.stderr)
+                                         stderr=self.stderr,
+                                         route_attributes=self.route_attributes)
 
     def test_request_must_invoke_lambda(self):
         make_response_mock = Mock()

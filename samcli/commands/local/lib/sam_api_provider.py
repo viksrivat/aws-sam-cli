@@ -1,7 +1,7 @@
 """Class that provides Apis from a SAM Template"""
 
 import logging
-from collections import namedtuple
+from collections import defaultdict
 
 from six import string_types
 
@@ -143,11 +143,10 @@ class SamApiProvider(ApiProvider):
         LOG.debug("Found '%s' APIs in resource '%s'", len(apis), logical_id)
 
         collector.add_apis(logical_id, apis)
-
-        self.api_attributes.binary_media_types.extend([collector._normalize_binary_media_type(item) for item in
-                                                       parser.get_binary_media_types()])  # Binary media from swagger
-        self.api_attributes.binary_media_types.extend([collector._normalize_binary_media_type(item) for item in
-                                                       binary_media])  # Binary media specified on resource in template
+        for media_type in parser.get_binary_media_types() + binary_media:
+            normalized_type = self._normalize_binary_media_type(media_type)
+            if normalized_type:
+                self.api_attributes.binary_media_types.add(normalized_type)
 
     @staticmethod
     def _merge_apis(collector):
@@ -316,112 +315,6 @@ class SamApiProvider(ApiProvider):
         else:
             yield http_method.upper()
 
-
-class ApiCollector(object):
-    """
-    Class to store the API configurations in the SAM Template. This class helps store both implicit and explicit
-    APIs in a standardized format
-    """
-
-    # Properties of each API. The structure is quite similar to the properties of AWS::Serverless::Api resource.
-    # This is intentional because it allows us to easily extend this class to support future properties on the API.
-    # We will store properties of Implicit APIs also in this format which converges the handling of implicit & explicit
-    # APIs.
-    Properties = namedtuple("Properties", ["apis"])
-
-    def __init__(self):
-        # API properties stored per resource. Key is the LogicalId of the AWS::Serverless::Api resource and
-        # value is the properties
-        self.by_resource = {}
-
-    def __iter__(self):
-        """
-        Iterator to iterate through all the APIs stored in the collector. In each iteration, this yields the
-        LogicalId of the API resource and a list of APIs available in this resource.
-
-        Yields
-        -------
-        str
-            LogicalID of the AWS::Serverless::Api resource
-        list samcli.commands.local.lib.provider.Api
-            List of the API available in this resource along with additional configuration like binary media types.
-        """
-
-        for logical_id, _ in self.by_resource.items():
-            yield logical_id, self._get_apis_with_config(logical_id)
-
-    def add_apis(self, logical_id, apis):
-        """
-        Stores the given APIs tagged under the given logicalId
-
-        Parameters
-        ----------
-        logical_id : str
-            LogicalId of the AWS::Serverless::Api resource
-
-        apis : list of samcli.commands.local.lib.provider.Api
-            List of APIs available in this resource
-        """
-        properties = self._get_properties(logical_id)
-        properties.apis.extend(apis)
-
-    def _get_apis_with_config(self, logical_id):
-        """
-        Returns the list of APIs in this resource along with other extra configuration such as binary media types,
-        cors etc. Additional configuration is merged directly into the API data because these properties, although
-        defined globally, actually apply to each API.
-
-        Parameters
-        ----------
-        logical_id : str
-            Logical ID of the resource to fetch data for
-
-        Returns
-        -------
-        list of samcli.commands.local.lib.provider.Api
-            List of APIs with additional configurations for the resource with given logicalId. If there are no APIs,
-            then it returns an empty list
-        """
-
-        properties = self._get_properties(logical_id)
-
-        # These configs need to be applied to each API
-        binary_media = sorted(list(properties.binary_media_types))  # Also sort the list to keep the ordering stable
-        cors = properties.cors
-
-        result = []
-        for api in properties.apis:
-            # Create a copy of the API with updated configuration
-            updated_api = api._replace(binary_media_types=binary_media,
-                                       cors=cors)
-            result.append(updated_api)
-
-        return result
-
-    def _get_properties(self, logical_id):
-        """
-        Returns the properties of resource with given logical ID. If a resource is not found, then it returns an
-        empty data.
-
-        Parameters
-        ----------
-        logical_id : str
-            Logical ID of the resource
-
-        Returns
-        -------
-        samcli.commands.local.lib.sam_api_provider.ApiCollector.Properties
-            Properties object for this resource.
-        """
-
-        if logical_id not in self.by_resource:
-            self.by_resource[logical_id] = self.Properties(apis=[],
-                                                           # Use a set() to be able to easily de-dupe
-                                                           binary_media_types=set(),
-                                                           cors=None)
-
-        return self.by_resource[logical_id]
-
     @staticmethod
     def _normalize_binary_media_type(value):
         """
@@ -444,3 +337,102 @@ class ApiCollector(object):
             return None
 
         return value.replace("~1", "/")
+
+
+class ApiCollector(object):
+    """
+    Class to store the API configurations in the SAM Template. This class helps store both implicit and explicit
+    APIs in a standardized format
+    """
+
+    # Properties of each API. The structure is quite similar to the properties of AWS::Serverless::Api resource.
+    # This is intentional because it allows us to easily extend this class to support future properties on the API.
+    # We will store properties of Implicit APIs also in this format which converges the handling of implicit & explicit
+    # APIs.
+
+    def __init__(self):
+        # API properties stored per resource. Key is the LogicalId of the AWS::Serverless::Api resource and
+        # value is the properties
+        self.by_resource = defaultdict(list)
+
+    def __iter__(self):
+        """
+        Iterator to iterate through all the APIs stored in the collector. In each iteration, this yields the
+        LogicalId of the API resource and a list of APIs available in this resource.
+
+        Yields
+        -------
+        str
+            LogicalID of the AWS::Serverless::Api resource
+        list samcli.commands.local.lib.provider.Api
+            List of the API available in this resource along with additional configuration like binary media types.
+        """
+
+        for logical_id, _ in self.by_resource.items():
+            yield logical_id, self._get_apis(logical_id)
+
+    def add_apis(self, logical_id, apis):
+        """
+        Stores the given APIs tagged under the given logicalId
+
+        Parameters
+        ----------
+        logical_id : str
+            LogicalId of the AWS::Serverless::Api resource
+
+        apis : list of samcli.commands.local.lib.provider.Api
+            List of APIs available in this resource
+        """
+        self._get_apis(logical_id).extend(apis)
+
+    #
+    # def _get_apis_with_config(self, logical_id):
+    #     """
+    #     Returns the list of APIs in this resource along with other extra configuration such as binary media types,
+    #     cors etc. Additional configuration is merged directly into the API data because these properties, although
+    #     defined globally, actually apply to each API.
+    #
+    #     Parameters
+    #     ----------
+    #     logical_id : str
+    #         Logical ID of the resource to fetch data for
+    #
+    #     Returns
+    #     -------
+    #     list of samcli.commands.local.lib.provider.Api
+    #         List of APIs with additional configurations for the resource with given logicalId. If there are no APIs,
+    #         then it returns an empty list
+    #     """
+    #
+    #     properties = self._get_apis(logical_id)
+    #
+    #     # These configs need to be applied to each API
+    #     binary_media = sorted(list(properties.binary_media_types))  # Also sort the list to keep the ordering stable
+    #     cors = properties.cors
+    #
+    #     result = []
+    #     for api in properties.apis:
+    #         # Create a copy of the API with updated configuration
+    #         updated_api = api._replace(binary_media_types=binary_media,
+    #                                    cors=cors)
+    #         result.append(updated_api)
+    #
+    #     return result
+
+    def _get_apis(self, logical_id):
+        """
+        Returns the properties of resource with given logical ID. If a resource is not found, then it returns an
+        empty data.
+
+        Parameters
+        ----------
+        logical_id : str
+            Logical ID of the resource
+
+        Returns
+        -------
+        samcli.commands.local.lib.sam_api_provider.ApiCollector.Properties
+            Properties object for this resource.
+        """
+
+        return self.by_resource[logical_id]

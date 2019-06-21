@@ -107,7 +107,8 @@ class LocalApiService(object):
 
     @staticmethod
     def _make_routing_attributes(api_attributes):
-        return RouteAttributes(binary_media_types=api_attributes.binary_media_types, cors=api_attributes.cors)
+        sorted_binary_media_types = sorted(list(api_attributes.binary_media_types))
+        return RouteAttributes(binary_media_types=sorted_binary_media_types, cors=api_attributes.cors)
 
     @staticmethod
     def _print_routes(api_provider, host, port):

@@ -31,8 +31,9 @@ class Route(object):
         self.function_name = function_name
         self.path = path
 
+
 class RouteAttributes(object):
-    def __init__(self, binary_media_types, cors):
+    def __init__(self, binary_media_types=None, cors=None):
         """
         Creates an ApiGatewayRoute
 
@@ -40,15 +41,18 @@ class RouteAttributes(object):
         :param function_name: Name of the Lambda function this API is connected to
         :param str path: Path off the base url
         """
-        self.binary_types = binary_media_types
+        if binary_media_types is None:
+            binary_media_types = []
+        self.binary_media_types = binary_media_types
         self.cors = cors
 
-class LocalApigwService(BaseLocalService):
 
+class LocalApigwService(BaseLocalService):
     _DEFAULT_PORT = 3000
     _DEFAULT_HOST = '127.0.0.1'
 
-    def __init__(self, routing_list, lambda_runner, static_dir=None, port=None, host=None, stderr=None, route_attributes=None):
+    def __init__(self, routing_list, lambda_runner, static_dir=None, port=None, host=None, stderr=None,
+                 route_attributes=None):
         """
         Creates an ApiGatewayService
 
@@ -154,7 +158,7 @@ class LocalApigwService(BaseLocalService):
         route = self._get_current_route(request)
 
         try:
-            event = self._construct_event(request, self.port, self.route_attributes.binary_types)
+            event = self._construct_event(request, self.port, self.route_attributes.binary_media_types)
         except UnicodeDecodeError:
             return ServiceErrorResponses.lambda_failure_response()
 

@@ -231,14 +231,14 @@ _ApiAttributesTuple = namedtuple("ApiAttributes", [
     "binary_media_types"
 ])
 _ApiAttributesTuple.__new__.__defaults__ = (None,  # Cors is optional and defaults to None
-                                            []  # binary_media_types is optional and defaults to empty
+                                            []     # binary_media_types is optional and defaults to empty
                                             )
 
 
-class ApiAttributes(_ApiTuple):
+class ApiAttributes(_ApiAttributesTuple):
     def __hash__(self):
         # Other properties are not a part of the hash
-        return hash(self.path) * hash(self.method) * hash(self.function_name)
+        return hash(self.cors) * hash(self.binary_media_types)
 
 
 Cors = namedtuple("Cors", ["AllowOrigin", "AllowMethods", "AllowHeaders"])

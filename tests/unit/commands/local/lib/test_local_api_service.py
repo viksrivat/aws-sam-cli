@@ -8,7 +8,7 @@ from mock import Mock, patch
 from samcli.commands.local.lib.local_api_service import LocalApiService
 from samcli.commands.local.lib.exceptions import NoApisDefined
 from samcli.commands.local.lib.provider import Api
-from samcli.local.apigw.local_apigw_service import Route
+from samcli.local.apigw.local_apigw_service import Route, RouteAttributes
 
 
 class TestLocalApiService_start(TestCase):
@@ -37,16 +37,18 @@ class TestLocalApiService_start(TestCase):
     @patch.object(LocalApiService, "_make_static_dir_path")
     @patch.object(LocalApiService, "_print_routes")
     @patch.object(LocalApiService, "_make_routing_list")
+    @patch.object(LocalApiService, "_make_routing_attributes")
     def test_must_start_service(self,
                                 make_routing_list_mock,
                                 log_routes_mock,
                                 make_static_dir_mock,
                                 SamApiProviderMock,
-                                ApiGwServiceMock):
+                                ApiGwServiceMock,
+                                make_routing_attributes):
 
         routing_list = [1, 2, 3]  # something
         static_dir_path = "/foo/bar"
-
+        make_routing_attributes.return_value = RouteAttributes()
         make_routing_list_mock.return_value = routing_list
         make_static_dir_mock.return_value = static_dir_path
 
@@ -80,16 +82,19 @@ class TestLocalApiService_start(TestCase):
     @patch.object(LocalApiService, "_make_static_dir_path")
     @patch.object(LocalApiService, "_print_routes")
     @patch.object(LocalApiService, "_make_routing_list")
+    @patch.object(LocalApiService, "_make_routing_attributes")
     def test_must_raise_if_route_not_available(self,
                                                make_routing_list_mock,
                                                log_routes_mock,
                                                make_static_dir_mock,
+                                               make_routing_attributes,
                                                SamApiProviderMock,
                                                ApiGwServiceMock):
 
         routing_list = []  # Empty
 
         make_routing_list_mock.return_value = routing_list
+        make_routing_attributes.return_value = RouteAttributes()
 
         SamApiProviderMock.return_value = self.api_provider_mock
         ApiGwServiceMock.return_value = self.apigw_service
@@ -106,9 +111,9 @@ class TestLocalApiService_make_routing_list(TestCase):
     def test_must_return_routing_list_from_apis(self):
         api_provider = Mock()
         apis = [
-            Api(path="/1", method="GET1", function_name="name1", cors="CORS1"),
-            Api(path="/2", method="GET2", function_name="name2", cors="CORS2"),
-            Api(path="/3", method="GET3", function_name="name3", cors="CORS3"),
+            Api(path="/1", method="GET1", function_name="name1"),
+            Api(path="/2", method="GET2", function_name="name2"),
+            Api(path="/3", method="GET3", function_name="name3"),
         ]
         expected = [
             Route(path="/1", methods=["GET1"], function_name="name1"),
@@ -132,11 +137,11 @@ class TestLocalApiService_print_routes(TestCase):
 
         api_provider = Mock()
         apis = [
-            Api(path="/1", method="GET", function_name="name1", cors="CORS1"),
-            Api(path="/1", method="POST", function_name="name1", cors="CORS1"),
-            Api(path="/1", method="DELETE", function_name="othername1", cors="CORS1"),
-            Api(path="/2", method="GET2", function_name="name2", cors="CORS2"),
-            Api(path="/3", method="GET3", function_name="name3", cors="CORS3"),
+            Api(path="/1", method="GET", function_name="name1"),
+            Api(path="/1", method="POST", function_name="name1"),
+            Api(path="/1", method="DELETE", function_name="othername1"),
+            Api(path="/2", method="GET2", function_name="name2"),
+            Api(path="/3", method="GET3", function_name="name3"),
         ]
         api_provider.get_all.return_value = apis
 
