@@ -18,6 +18,7 @@ class SamApiProvider(ApiProvider):
     _IMPLICIT_API_RESOURCE_ID = "ServerlessRestApi"
     _SERVERLESS_FUNCTION = "AWS::Serverless::Function"
     _SERVERLESS_API = "AWS::Serverless::Api"
+    _APIGATEWAY_STAGE = "AWS::ApiGateway::Stage"
     _TYPE = "Type"
 
     _FUNCTION_EVENT_TYPE_API = "Api"
@@ -102,6 +103,9 @@ class SamApiProvider(ApiProvider):
             if resource_type == SamApiProvider._SERVERLESS_API:
                 self._extract_from_serverless_api(logical_id, resource, collector)
 
+            if resource_type == SamApiProvider._APIGATEWAY_STAGE:
+                self._extract_cloud_formation_stage(logical_id, resource, collector)
+
         apis = SamApiProvider._merge_apis(collector)
         return self._normalize_apis(apis)
 
@@ -147,6 +151,27 @@ class SamApiProvider(ApiProvider):
         collector.add_binary_media_types(logical_id, parser.get_binary_media_types())  # Binary media from swagger
         collector.add_binary_media_types(logical_id, binary_media)  # Binary media specified on resource in template
 
+        collector.add_stage_name(logical_id, stage_name)
+        collector.add_stage_variables(logical_id, stage_variables)
+
+    def _extract_cloud_formation_stage(self, logical_id, api_resource, collector):
+        """
+        Extract APIs from AWS::ApiGateway::Stage resource by reading and adds it to the collector.
+
+        Parameters
+        ----------
+        logical_id : str
+            Logical ID of the resource
+
+        api_resource : dict
+            Resource definition, including its properties
+
+        collector : ApiCollector
+            Instance of the API collector that where we will save the API information
+        """
+        properties = api_resource.get("Properties", {})
+        stage_name = properties.get("StageName")
+        stage_variables = properties.get("StageVariables")
         collector.add_stage_name(logical_id, stage_name)
         collector.add_stage_variables(logical_id, stage_variables)
 
