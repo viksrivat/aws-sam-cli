@@ -1,0 +1,109 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Globals:
+  Api:
+    BinaryMediaTypes:
+    - image~1png
+Resources:
+  Base64ResponseFunction:
+    Properties:
+      CodeUri: "."
+      Handler: main.base64_response
+      Runtime: python3.6
+    Type: AWS::Serverless::Function
+  EchoBase64EventBodyFunction:
+    Properties:
+      CodeUri: "."
+      Handler: main.echo_base64_event_body
+      Runtime: python3.6
+    Type: AWS::Serverless::Function
+  MyApi:
+    Properties:
+      Body:
+        info:
+          title:
+            Ref: AWS::StackName
+        paths:
+          "/anyandall":
+            x-amazon-apigateway-any-method:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                responses: {}
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MyLambdaFunction.Arn}/invocations
+          "/base64response":
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Base64ResponseFunction.Arn}/invocations
+          "/echobase64eventbody":
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${EchoBase64EventBodyFunction.Arn}/invocations
+          "/functionwithnoapievent":
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                responses: {}
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${NoApiEventFunction.Arn}/invocations
+          "/nofunctionfound":
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WhatFunction.Arn}/invocations
+          "/nonserverlessfunction":
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MyNonServerlessLambdaFunction.Arn}/invocations
+        swagger: '2.0'
+        x-amazon-apigateway-binary-media-types:
+        - image/gif
+      StageName: prod
+    Type: AWS::ApiGateway::RestApi
+  Dev:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: Dev
+      RestApiId: !Ref MyApi
+      Variables:
+        Stack: Dev
+  MyLambdaFunction:
+    Properties:
+      CodeUri: "."
+      Events:
+        GetApi:
+          Properties:
+            Method: GET
+            Path: "/get"
+            RestApiId:
+              Ref: MyApi
+          Type: Api
+      Handler: main.handler
+      Runtime: python3.6
+    Type: AWS::Serverless::Function
+  MyNonServerlessLambdaFunction:
+    Properties:
+      CodeUri: "."
+      Handler: main.handler
+      Runtime: python3.6
+    Type: AWS::Lambda::Function
+  NoApiEventFunction:
+    Properties:
+      CodeUri: "."
+      Handler: main.handler
+      Runtime: python3.6
+    Type: AWS::Serverless::Function
+Transform: AWS::Serverless-2016-10-31
