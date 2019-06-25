@@ -385,40 +385,6 @@ class ApiCollector(object):
         """
         self._get_apis(logical_id).extend(apis)
 
-    #
-    # def _get_apis_with_config(self, logical_id):
-    #     """
-    #     Returns the list of APIs in this resource along with other extra configuration such as binary media types,
-    #     cors etc. Additional configuration is merged directly into the API data because these properties, although
-    #     defined globally, actually apply to each API.
-    #
-    #     Parameters
-    #     ----------
-    #     logical_id : str
-    #         Logical ID of the resource to fetch data for
-    #
-    #     Returns
-    #     -------
-    #     list of samcli.commands.local.lib.provider.Api
-    #         List of APIs with additional configurations for the resource with given logicalId. If there are no APIs,
-    #         then it returns an empty list
-    #     """
-    #
-    #     properties = self._get_apis(logical_id)
-    #
-    #     # These configs need to be applied to each API
-    #     binary_media = sorted(list(properties.binary_media_types))  # Also sort the list to keep the ordering stable
-    #     cors = properties.cors
-    #
-    #     result = []
-    #     for api in properties.apis:
-    #         # Create a copy of the API with updated configuration
-    #         updated_api = api._replace(binary_media_types=binary_media,
-    #                                    cors=cors)
-    #         result.append(updated_api)
-    #
-    #     return result
-
     def _get_apis(self, logical_id):
         """
         Returns the properties of resource with given logical ID. If a resource is not found, then it returns an
