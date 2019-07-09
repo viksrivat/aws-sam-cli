@@ -1,6 +1,8 @@
 """
 Process and simplifies CloudFormation intrinsic properties such as FN::* and Ref
 """
+import logging
+
 import base64
 import re
 
@@ -10,6 +12,8 @@ from samcli.commands.local.lib.intrinsic_resolver.invalid_intrinsic_exception im
     verify_intrinsic_type_list, verify_non_null, verify_intrinsic_type_int, verify_in_bounds, \
     verify_number_arguments, verify_intrinsic_type_str, verify_intrinsic_type_dict, verify_intrinsic_type_bool, \
     verify_all_list_intrinsic_type, InvalidSymbolException
+
+LOG = logging.getLogger(__name__)
 
 
 class IntrinsicResolver(object):
@@ -199,7 +203,7 @@ class IntrinsicResolver(object):
             except (InvalidIntrinsicException, InvalidSymbolException) as e:
                 resource_type = val.get("Type", "")
                 if ignore_errors:
-                    print("Unable to process properties of {}.{}".format(key, resource_type))
+                    LOG.error("Unable to process properties of {}.{}".format(key, resource_type))
                     processed_template[key] = val
                 else:
                     raise InvalidIntrinsicException(
