@@ -34,7 +34,6 @@ class Route(object):
 
 
 class LocalApigwService(BaseLocalService):
-
     _DEFAULT_PORT = 3000
     _DEFAULT_HOST = '127.0.0.1'
 
@@ -231,7 +230,7 @@ class LocalApigwService(BaseLocalService):
             raise ValueError(msg)
 
         # If the customer doesn't define Content-Type default to application/json
-        if "Content-Type" not in headers:
+        if "Content-Type" not in headers or headers["Content-Type"] is None:
             LOG.info("No Content-Type given. Defaulting to 'application/json'.")
             headers["Content-Type"] = "application/json"
 
