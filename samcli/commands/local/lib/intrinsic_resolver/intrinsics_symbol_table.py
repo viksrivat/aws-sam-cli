@@ -4,8 +4,6 @@ The symbol table that is used in IntrinsicResolver in order to resolve runtime a
 import json
 import os
 import uuid
-from random import randint
-from subprocess import Popen, PIPE, DEVNULL
 
 from six import string_types
 
@@ -67,6 +65,10 @@ class IntrinsicsSymbolTable(object):
     ARN_SUFFIX = ".Arn"
 
     CFN_RESOURCE_TYPE = "Type"
+
+    DEFAULT_ACCOUNT_ID = "123456789012"
+    DEFAULT_STACK_ID = "123456789012"
+    DEFAULT_STACK_NAME = "default-stack-name"
 
     def __init__(self, logical_id_translator=None, parameters=None, default_type_resolver=None,
                  common_attribute_resolver=None, resources=None):
@@ -181,6 +183,7 @@ class IntrinsicsSymbolTable(object):
         -------
         This resolves the attribute
         """
+        # pylint: disable=too-many-return-statements
         translated = self.get_translation(logical_id, resource_attribute)
         if translated:
             return translated
@@ -321,24 +324,10 @@ class IntrinsicsSymbolTable(object):
         -------
         A pseudo account id
         """
-        translated = self.logical_id_translator.get(IntrinsicsSymbolTable.AWS_ACCOUNT_ID)
-        if translated:
-            return translated
-
-        process = Popen(["aws", "sts", "get-caller-identity", "--output", "text", "--query", 'Account'],
-                        stdout=PIPE, stderr=DEVNULL)
-        (output, err) = process.communicate()
-        process.wait()
-        account_id = None
-        try:
-            account_id = int(output)
-        except ValueError:
-            pass
-
-        if not account_id:
-            account_id = ''.join([str(randint(0, 9)) for _ in range(12)])
-
-        return str(account_id)
+        translation = self.get_translation(self.AWS_ACCOUNT_ID, IntrinsicResolver.REF)
+        if translation:
+            return translation
+        return self.DEFAULT_ACCOUNT_ID
 
     def handle_pseudo_region(self):
         """
@@ -350,6 +339,9 @@ class IntrinsicsSymbolTable(object):
         -------
         The region from the environment or a default one
         """
+        translation = self.get_translation(self.AWS_REGION, IntrinsicResolver.REF)
+        if translation:
+            return translation
         return os.getenv("AWS_REGION") or self.DEFAULT_REGION
 
     def handle_pseudo_url_prefix(self):
@@ -361,6 +353,9 @@ class IntrinsicsSymbolTable(object):
         -------
         The url prefix of amazonaws.com or amazonaws.com.cn
         """
+        translation = self.get_translation(self.AWS_URL_PREFIX, IntrinsicResolver.REF)
+        if translation:
+            return translation
         aws_region = self.logical_id_translator.get(self.AWS_REGION) or self.handle_pseudo_region()
         if self.CHINA_PREFIX in aws_region:
             return self.CHINA_URL_PREFIX
@@ -376,8 +371,10 @@ class IntrinsicsSymbolTable(object):
         -------
         A list of Notification Arns
         """
-        return [self.arn_resolver(logical_id=self.get_random_string(),
-                                  service_name=self.AWS_NOTIFICATION_SERVICE_NAME) for _ in range(randint(1, 3))]
+        translation = self.get_translation(self.AWS_NOTIFICATION_ARN, IntrinsicResolver.REF)
+        if translation:
+            return translation
+        raise InvalidSymbolException("Notification Arns are not supported")
 
     def handle_pseudo_partition(self):
         """
@@ -389,6 +386,9 @@ class IntrinsicsSymbolTable(object):
         -------
         A pseudo partition like aws-cn or aws or aws-gov
         """
+        translation = self.get_translation(self.AWS_PARTITION, IntrinsicResolver.REF)
+        if translation:
+            return translation
         aws_region = self.logical_id_translator.get(self.AWS_REGION) or self.handle_pseudo_region()
         if self.CHINA_PREFIX in aws_region:
             return self.CHINA_PARTITION
@@ -418,7 +418,10 @@ class IntrinsicsSymbolTable(object):
         -------
         A randomized string
         """
-        return self.get_random_string()
+        translation = self.get_translation(self.AWS_STACK_ID, IntrinsicResolver.REF)
+        if translation:
+            return translation
+        return self.DEFAULT_STACK_ID
 
     def handle_pseudo_stack_name(self):
         """
@@ -431,7 +434,10 @@ class IntrinsicsSymbolTable(object):
         -------
         A randomized string
         """
-        return self.get_random_string()
+        translation = self.get_translation(self.AWS_STACK_NAME, IntrinsicResolver.REF)
+        if translation:
+            return translation
+        return self.DEFAULT_STACK_NAME
 
     @staticmethod
     def handle_pseudo_no_value():

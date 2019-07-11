@@ -1431,4 +1431,5 @@ class TestIntrinsicTemplateResolution(TestCase):
                              'RestApiResource': {'Properties': {'PathPart': '{proxy+}',
                                                                 'RestApiId': 'RestApi',
                                                                 'parentId': '/'}}}
+        self.maxDiff = None
         self.assertEquals(expected_template, result)
