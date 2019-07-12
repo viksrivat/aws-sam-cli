@@ -24,7 +24,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code: '.'
-      Handler: main.handler
+      Handler: main.cdk_hello_world
       Runtime: python3.6
 
   HelloHandlerApiPermissionANYAC4E141E:

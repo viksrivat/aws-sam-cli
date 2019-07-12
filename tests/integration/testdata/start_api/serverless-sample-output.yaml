@@ -58,7 +58,7 @@ Resources:
     Properties:
       Code: "."
       FunctionName: serverless-hello-world-dev-helloWorld
-      Handler: main.handler
+      Handler: main.serverless_hello_world
       MemorySize: 1024
       Role:
         Fn::GetAtt:
@@ -89,7 +89,7 @@ Resources:
         Fn::GetAtt:
         - ApiGatewayRestApi
         - RootResourceId
-      PathPart: hello-world
+      PathPart: "{proxy+}"
       RestApiId:
         Ref: ApiGatewayRestApi
   ApiGatewayMethodHelloDashworldOptions:
